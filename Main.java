@@ -89,7 +89,7 @@ public class Main extends JFrame implements ComponentListener, ItemListener {
 
 		System.setProperty("awt.useSystemAAFontSettings","on");
 		System.setProperty("swing.aatext", "true");
-		setTitle("Minesweeper Ultra Deluxe (v1.0)");
+		setTitle("Minesweeper Ultra Deluxe (v1.1)");
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 
 		//Set custom window title
@@ -159,26 +159,30 @@ public class Main extends JFrame implements ComponentListener, ItemListener {
 		board.addComponentListener(this);
 		pack();
 		this.repaint();
+		board.paint(getGraphics());
 	}
 
 	public void resetGame(){
 		//Resets the game with the mines in the same location
-		if (!Board.firstClick){
-			Board.dead = false;
-			Board.won = false;
-			board.remainingMines = mines;
-			board.remainingCells = xCells*yCells-mines;
-			board.resetCounter();
-
-			//Reset the state of the cells
-			for (int i = 0; i < xCells; i++){
-				for (int j = 0; j < yCells; j++){
-					board.cells[i][j].processed = false;
-					board.cells[i][j].marked = false;
-				}
-			}
-			this.repaint();
+		if (Board.firstClick){
+			return;
 		}
+
+		Board.dead = false;
+		Board.won = false;
+		board.remainingMines = mines;
+		board.remainingCells = xCells*yCells-mines;
+		board.resetCounter();
+
+		//Reset the state of the cells
+		for (int i = 0; i < xCells; i++){
+			for (int j = 0; j < yCells; j++){
+				board.cells[i][j].processed = false;
+				board.cells[i][j].marked = false;
+				board.cells[i][j].enqueued = false;
+			}
+		}
+		this.repaint();
 	}
 
 	//Used to save the current screen in a buffered image to be blurred

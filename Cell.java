@@ -2,6 +2,7 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 
 public class Cell {
 	public static final Color LIGHTGRAY = new Color(210,210,210);
@@ -16,12 +17,13 @@ public class Cell {
 	public boolean highlighted = false;
 	public boolean processed = false;
 	public boolean marked = false;
+	public boolean enqueued = false;
 	
 	public GradientPaint gradient, lightGradient, lightestGradient, hoverGradient;
 	
 	public double height, width;
 
-	private int posX, posY, displayWidth, displayHeight;
+	public int posX, posY, displayWidth, displayHeight;
 	
 	//List of neighbors
 	Cell[] neighbors = new Cell[8];
@@ -40,25 +42,11 @@ public class Cell {
 		
 		displayWidth = (int)width;
 		displayHeight = (int)height;
-		
-		//Fix for rounding errors. Some cells get an extra pixel of width/height
-		if ((int)((x+1)*width) > posX + displayWidth){
-			displayWidth++;
-		}
-		if ((int)((y+1)*height) > posY + displayHeight){
-			displayHeight++;
-		}
 	}
 	
 	public void draw(Graphics2D g2d) {
-		//Fix for rounding errors. Some cells get an extra pixel of width/height
-		if ((int)((x+1)*width) > posX + displayWidth){
-			displayWidth++;
-		}
-		if ((int)((y+1)*height) > posY + displayHeight){
-			displayHeight++;
-		}
-		
+		g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
 		if (processed){
 			if (degree == 0){
 				g2d.setPaint(lightestGradient);
@@ -68,7 +56,6 @@ public class Cell {
 		} else {
 			g2d.setPaint(gradient);
 		}
-		
 		
 		if (Board.dead && mine){
 			g2d.setColor(RED);
@@ -111,7 +98,7 @@ public class Cell {
 		
 		//Draw highlight effect
 		g2d.setColor(new Color(255,255,255,70));
-		g2d.fillRect(posX, posY+1, 1, displayHeight);
+		g2d.fillRect(posX, posY+1, 1, displayHeight-1);
 		g2d.fillRect(posX, posY, displayWidth, 1);
 		g2d.setColor(new Color(0,0,0,70));
 		g2d.fillRect(posX+displayWidth-1, posY, 1, displayHeight);

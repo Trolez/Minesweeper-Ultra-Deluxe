@@ -7,6 +7,7 @@ import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Random;
 import java.awt.event.MouseEvent;
@@ -17,6 +18,7 @@ import java.awt.image.BufferedImageOp;
 import java.awt.image.ConvolveOp;
 import java.awt.image.Kernel;
 import java.awt.Color;
+import java.awt.Rectangle;
 
 public class Board extends JPanel implements MouseListener, MouseMotionListener {
 	static final long serialVersionUID = 1L;
@@ -57,6 +59,8 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 		remainingCells = main.xCells*main.yCells-main.mines;
 		
 		cells = new Cell[main.xCells][main.yCells];
+
+		previous = null;
 		
 		//The cells are initialized
 		for (int i = 0; i < main.xCells; i++){
@@ -161,36 +165,58 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 		}
 	}
 	
-	public void traverse (Cell c){
-		//Don't process if marked
-		if (!c.marked){
+	public void traverse (Cell cell){
+		ArrayDeque<Cell> cells = new ArrayDeque<Cell>(main.xCells * main.yCells);
+		cells.add(cell);
+		cell.enqueued = true;
+		
+		Cell c = null;
+		while (!cells.isEmpty())
+		{
+			c = cells.poll();
+
+			//Don't process if marked
+			if (c.marked) {
+				continue;
+			}
+
 			if (!c.processed && !c.mine){
 				remainingCells--;
 				if (remainingCells == 0){
 					counter.stop();
-					c.processed = true;
 					won = true;
 					img = null;
 					img = main.getScreenShot(this);
 					blur = new ConvolveOp(new Kernel(5, 5, blurKernel));
 					main.ShowHighscoreDialog();
 				}
+				c.processed = true;
 			}
 			
-			c.processed = true;
 			if (!c.mine){
 				//Also process neighbors if degree is 0
 				if (c.degree == 0){
 					//Operate on all neighbors
 					for (int i = 0; i < 8; i += 1){
-						if (c.neighbors[i] != null){
-							if (!c.neighbors[i].processed){
-								traverse(c.neighbors[i]);
-							}
+						if (c.neighbors[i] == null){
+							continue;
+						}
+
+						if (!c.neighbors[i].processed && !c.neighbors[i].enqueued){
+							cells.add(c.neighbors[i]);
+							c.neighbors[i].enqueued = true;
 						}
 					}
 				}
+
+				// try {
+				// 	//Sleep and repaint to make animated effect
+				// 	Thread.sleep(1);
+				// 	c.draw((Graphics2D)this.getGraphics());
+				// 	main.repaint(c.posX, c.posY, c.displayWidth, c.displayHeight);
+				// } catch (InterruptedException e) {}
 			} else {
+				//Player has hit a mine
 				counter.stop();
 				dead = true;
 				img = null;
@@ -198,6 +224,8 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 				blur = new ConvolveOp(new Kernel(5, 5, blurKernel));
 			}
 		}
+
+		main.repaint();
 	}
 	
 	public void paint (Graphics g){
@@ -263,6 +291,10 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 	}
 
 	public void mouseMoved(MouseEvent e) {
+		if (dead || won) {
+			return;
+		}
+		
 		int x = (int) (e.getX()/Main.cellWidth);
 		int y = (int) (e.getY()/Main.cellHeight);
 		
@@ -278,9 +310,19 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 		c.highlighted = true;
 		if(previous != null && previous != c) {
 			previous.highlighted = false;
+			previous.draw((Graphics2D)this.getGraphics());
+			main.repaint(previous.posX, previous.posY, previous.displayWidth, previous.displayHeight);
 		}
+
+		if (previous == null) {
+			//Fix for weird rendering issue
+			main.repaint();
+		}
+
 		previous = c;
-		main.repaint();
+
+		c.draw((Graphics2D)this.getGraphics());
+		main.repaint(c.posX, c.posY, c.displayWidth, c.displayHeight);
 	}
 
 	public void mouseClicked(MouseEvent e) {
@@ -313,15 +355,20 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 				Cell c = cells[x][y];
 				
 				if (SwingUtilities.isRightMouseButton(e)){
-					if (!c.processed){
-						if (c.marked){
-							c.marked = false;
-							remainingMines++;
-						} else {
-							c.marked = true;
-							remainingMines--;
-						}
+					if (c.processed) {
+						return;
 					}
+
+					if (c.marked){
+						c.marked = false;
+						remainingMines++;
+					} else {
+						c.marked = true;
+						remainingMines--;
+					}
+
+					c.draw((Graphics2D)this.getGraphics());
+					main.repaint(c.posX, c.posY, c.displayWidth, c.displayHeight);
 				} else {
 					if (c.processed){
 						if (c.degree > 0){
@@ -395,7 +442,6 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 						traverse(c);
 					}
 				}
-				main.repaint();
 			}
 		}
 	}

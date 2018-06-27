@@ -46,6 +46,7 @@ public class CustomWindow extends JDialog {
                 Board.difficulty = Difficulty.CUSTOM;
 
                 m.restartGame();
+                m.repaint();
             } catch (Exception e) {
                 m.xCells = currentX;
                 m.yCells = currentY;
