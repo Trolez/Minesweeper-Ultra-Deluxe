@@ -3,8 +3,6 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class Counter extends ScheduledThreadPoolExecutor {
-
-  private Main m;
   private Task task;
   private ScheduledFuture<?> t;
 
@@ -12,11 +10,10 @@ public class Counter extends ScheduledThreadPoolExecutor {
 
   public static int count;
 
-  public Counter(Main main) {
+  public Counter(GUI gui) {
     super(1);
-    m = main;
     count = 0;
-    task = new Task(m);
+    task = new Task(gui);
     isRunning = false;
   }
 
@@ -39,14 +36,14 @@ public class Counter extends ScheduledThreadPoolExecutor {
 }
 
 class Task implements Runnable {
-  private Main m;
+  private GUI gui;
 
-  public Task(Main main) {
-    m = main;
+  public Task(GUI gui) {
+    this.gui = gui;
   }
 
   public void run() {
     Counter.count++;
-    m.repaint();
+    gui.repaint();
   }
 }

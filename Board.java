@@ -1,9 +1,7 @@
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
-import java.awt.BasicStroke;
 import java.awt.Font;
-import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -22,6 +20,7 @@ import java.awt.Color;
 public class Board extends JPanel implements MouseListener, MouseMotionListener {
   static final long serialVersionUID = 1L;
 
+  private GUI gui;
   private Main main;
   private Cell previous = null;
   public Cell[][] cells;
@@ -32,7 +31,7 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
       16f / 273, 4f / 273, 7f / 273, 26f / 273, 41f / 273, 26f / 273, 7f / 273, 4f / 273, 16f / 273, 26f / 273,
       16f / 273, 4f / 273, 1f / 273, 4f / 273, 7f / 273, 4f / 273, 1f / 273 };
 
-  public int remainingMines;
+  public static int remainingMines;
   public int remainingCells;
 
   public static boolean firstClick = true;
@@ -42,13 +41,10 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
   // Difficulty variable
   public static Difficulty difficulty = Difficulty.HARD;
 
-  // Second counter
-  public Counter counter;
-
-  public Board(Main _main) {
+  public Board(Main _main, GUI gui) {
     main = _main;
 
-    counter = new Counter(main);
+    this.gui = gui;
 
     remainingMines = main.mines;
     remainingCells = main.xCells * main.yCells - main.mines;
@@ -70,7 +66,7 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 
   public void resetCounter() {
     Counter.count = 0;
-    counter.stop();
+    gui.StopCounter();
   }
 
   public void initNeighbors() {
@@ -177,7 +173,7 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
       if (!c.processed && !c.mine) {
         remainingCells--;
         if (remainingCells == 0) {
-          counter.stop();
+          gui.StopCounter();
           won = true;
           img = null;
           img = main.getScreenShot(this);
@@ -211,7 +207,7 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
         // } catch (InterruptedException e) {}
       } else {
         // Player has hit a mine
-        counter.stop();
+        gui.StopCounter();
         dead = true;
         img = null;
         img = main.getScreenShot(this);
@@ -222,10 +218,9 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
     main.repaint();
   }
 
-  public void paint(Graphics g) {
+  public void paintComponent(Graphics g) {
     Graphics2D g2d = (Graphics2D) g;
 
-    // Anti aliasing
     g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
     // Paint each of the cells
@@ -234,29 +229,6 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
         cells[i][j].draw(g2d);
       }
     }
-
-    // GUI
-    // Large box
-    GradientPaint gradient = new GradientPaint(0, (int) main.height, new Color(90, 90, 90), 0, (int) main.height + 50,
-        new Color(110, 110, 110));
-    g2d.setPaint(gradient);
-    g2d.fillRect(0, (int) main.height, (int) main.width, 75);
-
-    // Number boxes
-    g2d.setColor(new Color(220, 220, 220));
-    g2d.fillRect((int) main.width - 112, (int) main.height + 12, 100, 51);
-    g2d.fillRect(12, (int) main.height + 12, 100, 51);
-
-    // Draw borders along the boxes
-    g2d.setStroke(new BasicStroke(3));
-    g2d.setColor(new Color(50, 50, 50));
-    g2d.drawRect((int) main.width - 112, (int) main.height + 12, 100, 51);
-    g2d.drawRect(12, (int) main.height + 12, 100, 51);
-
-    g2d.setColor(new Color(20, 20, 20));
-    g2d.setFont(new Font("default", Font.BOLD, 20));
-    g2d.drawString("" + remainingMines, (int) main.width - 102, (int) main.height + 45);
-    g2d.drawString("" + Counter.count, 22, (int) main.height + 45);
 
     // Draw a win screen if game won
     if (won || dead) {
@@ -274,9 +246,6 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
       g2d.setFont(new Font("default", Font.BOLD, 15));
       g2d.drawString("Press 'space' to start a new game", 20, baseline + 25);
       g2d.drawString("Press 'enter' to replay this board", 20, baseline + 45);
-
-      // Show highscore prompt
-
     }
   }
 
@@ -332,110 +301,107 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
   }
 
   public void mousePressed(MouseEvent e) {
-    if (!dead) {
-      boolean disableClick = false;
-      int x = (int) (e.getX() / Main.cellWidth);
-      int y = (int) (e.getY() / Main.cellHeight);
+    if (dead) {
+      return;
+    }
 
-      if (x > main.xCells - 1) {
-        disableClick = true;
+    int x = (int) (e.getX() / Main.cellWidth);
+    int y = (int) (e.getY() / Main.cellHeight);
+
+    boolean clickedOutsideBoard = x > main.xCells - 1 || y > main.yCells - 1;
+
+    if (clickedOutsideBoard) {
+      return;
+    }
+
+    Cell c = cells[x][y];
+
+    if (SwingUtilities.isRightMouseButton(e)) {
+      if (c.processed) {
+        return;
       }
 
-      if (y > main.yCells - 1) {
-        disableClick = true;
+      if (c.marked) {
+        c.marked = false;
+        remainingMines++;
+      } else {
+        c.marked = true;
+        remainingMines--;
       }
 
-      if (!disableClick) {
-        Cell c = cells[x][y];
+      gui.repaint();
 
-        if (SwingUtilities.isRightMouseButton(e)) {
-          if (c.processed) {
-            return;
+      c.draw((Graphics2D) this.getGraphics());
+      main.repaint(c.posX, c.posY, c.displayWidth, c.displayHeight);
+    } else {
+      if (c.processed) {
+        if (c.degree > 0) {
+          // Count neighbors that has been marked
+          int count = 0;
+          for (Cell neighbor : c.neighbors) {
+            if (neighbor != null && neighbor.marked) {
+              count++;
+            }
           }
 
-          if (c.marked) {
-            c.marked = false;
-            remainingMines++;
-          } else {
-            c.marked = true;
-            remainingMines--;
-          }
-
-          c.draw((Graphics2D) this.getGraphics());
-          main.repaint(c.posX, c.posY, c.displayWidth, c.displayHeight);
-        } else {
-          if (c.processed) {
-            if (c.degree > 0) {
-              // Count neighbors that has been marked
-              int count = 0;
-              for (Cell neighbor : c.neighbors) {
-                if (neighbor != null && neighbor.marked) {
-                  count++;
-                }
-              }
-
-              // Process the neighbors if the correct amount has been marked
-              if (count == c.degree) {
-                for (Cell neighbor : c.neighbors) {
-                  if (neighbor != null) {
-                    traverse(neighbor);
-                  }
-                }
+          // Process the neighbors if the correct amount has been marked
+          if (count == c.degree) {
+            for (Cell neighbor : c.neighbors) {
+              if (neighbor != null) {
+                traverse(neighbor);
               }
             }
-          } else {
-            if (firstClick) {
-              Random random = new Random();
-              // First click. Move nearby mines
-              int startX = x - 2;
-              int startY = y - 2;
-              int endX = x + 2;
-              int endY = y + 2;
-              if (startX < 0) {
-                startX = 0;
-              }
-              if (startY < 0) {
-                startY = 0;
-              }
-              if (endX > main.xCells) {
-                endX = main.xCells;
-              }
-              if (endY > main.yCells) {
-                endY = main.yCells;
-              }
-
-              int newX, newY;
-              for (int i = startX; i < endX; i++) {
-                for (int j = startY; j < endY; j++) {
-                  if (cells[i][j].mine) {
-                    // There is a mine within the safe zone. Move it
-                    newX = random.nextInt(main.xCells);
-                    newY = random.nextInt(main.yCells);
-                    while (cells[newX][newY].mine || (Math.abs(newX - x) < 3 && Math.abs(newY - y) < 3)) {
-                      newX = random.nextInt(main.xCells);
-                      newY = random.nextInt(main.yCells);
-                    }
-
-                    // Do the moving
-                    cells[i][j].mine = false;
-                    cells[newX][newY].mine = true;
-                  }
-                }
-              }
-              initNeighbors();
-              firstClick = false;
-
-              counter.start();
-            }
-
-            // If the thread is not started, start it
-            if (!counter.isRunning()) {
-              counter.start();
-            }
-
-            traverse(c);
           }
         }
+      } else {
+        if (firstClick) {
+          Random random = new Random();
+          // First click. Move nearby mines
+          int startX = x - 2;
+          int startY = y - 2;
+          int endX = x + 2;
+          int endY = y + 2;
+          if (startX < 0) {
+            startX = 0;
+          }
+          if (startY < 0) {
+            startY = 0;
+          }
+          if (endX > main.xCells) {
+            endX = main.xCells;
+          }
+          if (endY > main.yCells) {
+            endY = main.yCells;
+          }
+
+          int newX, newY;
+          for (int i = startX; i < endX; i++) {
+            for (int j = startY; j < endY; j++) {
+              if (cells[i][j].mine) {
+                // There is a mine within the safe zone. Move it
+                newX = random.nextInt(main.xCells);
+                newY = random.nextInt(main.yCells);
+                while (cells[newX][newY].mine || (Math.abs(newX - x) < 3 && Math.abs(newY - y) < 3)) {
+                  newX = random.nextInt(main.xCells);
+                  newY = random.nextInt(main.yCells);
+                }
+
+                // Do the moving
+                cells[i][j].mine = false;
+                cells[newX][newY].mine = true;
+              }
+            }
+          }
+          initNeighbors();
+          firstClick = false;
+
+          gui.StartCounterIfNotRunning();
+        }
+
+        // If the thread is not started, start it
+        gui.StartCounterIfNotRunning();
+
+        traverse(c);
       }
     }
   }

@@ -32,6 +32,7 @@ public class Main extends JFrame implements ComponentListener, ItemListener {
   private ScoreManager scoreManager = new ScoreManager();
 
   private Board board;
+  private GUI gui;
 
   private boolean enterFlag = false;
   KeyAdapter keyAdapter = new KeyAdapter() {
@@ -122,14 +123,19 @@ public class Main extends JFrame implements ComponentListener, ItemListener {
       // handle exception
     }
 
-    board = new Board(this);
-    board.setPreferredSize(new Dimension((int) width, (int) height + 75)); // +75 for the gui
-    setMinimumSize(new Dimension((int) width, (int) height + 75));
+    gui = new GUI(this);
+    gui.setPreferredSize(new Dimension((int) width, 75));
+
+    board = new Board(this, gui);
+    board.setPreferredSize(new Dimension((int) width, (int) height));
     board.placeMines();
 
     this.addKeyListener(keyAdapter);
-    this.add(board, BorderLayout.CENTER);
     board.addComponentListener(this);
+
+    setMinimumSize(new Dimension((int) width, (int) height + 75)); // +75 for the gui
+    this.add(board, BorderLayout.CENTER);
+    this.add(gui, BorderLayout.SOUTH);
     pack();
     this.repaint();
   }
@@ -142,11 +148,11 @@ public class Main extends JFrame implements ComponentListener, ItemListener {
     verifyCells();
     board.resetCounter();
     this.remove(board);
-    board = new Board(this);
+    board = new Board(this, gui);
     Board.dead = false;
     Board.won = false;
     Board.firstClick = true;
-    board.setPreferredSize(new Dimension((int) width, (int) height + 75));
+    board.setPreferredSize(new Dimension((int) width, (int) height));
     setMinimumSize(new Dimension((int) width, (int) height + 75));
     board.placeMines();
     this.add(board, BorderLayout.CENTER);
@@ -164,7 +170,7 @@ public class Main extends JFrame implements ComponentListener, ItemListener {
 
     Board.dead = false;
     Board.won = false;
-    board.remainingMines = mines;
+    Board.remainingMines = mines;
     board.remainingCells = xCells * yCells - mines;
     board.resetCounter();
 
@@ -226,7 +232,7 @@ public class Main extends JFrame implements ComponentListener, ItemListener {
 
   public void componentResized(ComponentEvent e) {
     width = e.getComponent().getWidth();
-    height = e.getComponent().getHeight() - 75;
+    height = e.getComponent().getHeight();
     cellWidth = width / xCells;
     cellHeight = height / yCells;
 
@@ -244,7 +250,8 @@ public class Main extends JFrame implements ComponentListener, ItemListener {
       repaint();
     }
 
-    board.setPreferredSize(new Dimension((int) width, (int) height + 75));
+    board.setPreferredSize(new Dimension((int) width, (int) height));
+    gui.setPreferredSize(new Dimension((int) width, 75));
     pack();
   }
 
